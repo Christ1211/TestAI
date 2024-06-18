@@ -1,0 +1,28 @@
+# YOLOv5 🚀 by Ultralytics, AGPL-3.0 license
+# COCO128-seg dataset https://www.kaggle.com/ultralytics/coco128 (first 128 images from COCO train2017) by Ultralytics
+# Example usage: python train.py --data coco128.yaml
+# parent
+# ├── yolov5
+# └── datasets
+# Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
+train: dataset\images\train\1
+val: dataset\images\train\1
+
+# Classes
+names: 
+  0: QC2
+  1: QC3
+  2: QQ15
+  3: QC 15 BLUE
+  4: QC 25 BLACK
+  5: QC 25 TRIPLE BLACK
+  6: QC 25 WHITE
+  7: QC 35 I SILVE
+  8: QC 35 II BLACK
+  9: QC 35 II M. BLUE
+  10: QC 35 II ROSE GOLD
+  11: QC 35 II SILVER
+  12: SL AE II BLACK
+  13: SL AE II WHITE
+
+   

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trained Models</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden; /* Ensures the sidebar doesn't overflow */
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #333;
+            color: #fff;
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(100%);
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            z-index: 1000;
+        }
+        .sidebar.open {
+            transform: translateX(0);
+        }
+        .content {
+            flex: 1;
+            padding: 20px;
+            transition: margin-right 0.3s ease-in-out;
+            margin-right: 0;
+        }
+        .content.shift-right {
+            margin-right: 250px; /* Equal to the width of the sidebar */
+        }
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            padding: 10px;
+            border-bottom: 1px solid #555;
+        }
+        .checkmark {
+            color: #4CAF50;
+            font-size: 1.5em;
+        }
+        .crossmark {
+            color: #F44336;
+            font-size: 1.5em;
+        }
+        .burger-btn {
+            cursor: pointer;
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            z-index: 1100;
+            display: block;
+        }
+        .burger-btn span {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background-color: #fff;
+            margin-bottom: 5px;
+            transition: transform 0.3s ease-in-out;
+        }
+        .burger-btn.open span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        .burger-btn.open span:nth-child(2) {
+            transform: rotate(-45deg) translate(7px, -7px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar" id="sidebar">
+            <ul>
+                {% for class_name in folder_status %}
+                <li>{{ class_name }} 
+                    {% if folder_status[class_name] %}
+                    <span class="checkmark">&#10004;</span>
+                    {% else %}
+                    <span class="crossmark">&#10060;</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="content" id="content">
+            <h1>Trained Models</h1>
+        </div>
+        <div class="burger-btn" id="burger-btn">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const burgerBtn = document.getElementById('burger-btn');
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('content');
+
+            burgerBtn.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+                content.classList.toggle('shift-right');
+                burgerBtn.classList.toggle('open');
+            });
+        });
+    </script>
+</body>
+</html>

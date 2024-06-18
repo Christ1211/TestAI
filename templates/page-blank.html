@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Train YOLOv5 Model</title>
+    <style>
+        .thumbnail {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            margin: 5px;
+        }
+        .camera-icon-btn {
+            margin-top: 5px;
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .preview {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Train YOLOv5 Model</h1>
+    <form method="POST" action="/upload_training_data" enctype="multipart/form-data">
+        <div id="class_1" class="class-container">
+            <h2>Class 1</h2>
+            <label for="class_name_1">Class Name:</label>
+            <input type="text" name="class_name_1" id="class_name_1" required><br>
+            <label for="images_1">Upload Images:</label>
+            <input type="file" name="images_1" id="images_1" accept="image/*" multiple required><br>
+            <div class="preview" id="preview_1"></div>
+            <button type="button" onclick="startRecording('class_1')">Record from Camera</button>
+        </div>
+
+        <div id="class_2" class="class-container">
+            <h2>Class 2</h2>
+            <label for="class_name_2">Class Name:</label>
+            <input type="text" name="class_name_2" id="class_name_2" required><br>
+            <label for="images_2">Upload Images:</label>
+            <input type="file" name="images_2" id="images_2" accept="image/*" multiple required><br>
+            <div class="preview" id="preview_2"></div>
+            <button type="button" onclick="startRecording('class_2')">Record from Camera</button>
+        </div>
+
+        <!-- Repeat this pattern for additional classes -->
+
+        <input type="submit" value="Upload">
+    </form>
+    
+    <h2>Start Training</h2>
+    <form method="POST" action="/start_training">
+        <label for="epochs">Number of Epochs:</label>
+        <input type="number" name="epochs" id="epochs" value="10" min="1" required><br>
+        <input type="submit" value="Start Training">
+    </form>
+    
+    <h1>Record from Camera</h1>
+    <div id="camera-info"></div>
+    <div id="camera-container"></div>
+
+    <script>
+        var cameraInfo = document.getElementById('camera-info');
+        var cameraContainer = document.getElementById('camera-container');
+        var currentStream;
+        var video; // Define video globally
+
+        // Function to start recording for a specific class
+        function startRecording(className) {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function(mediaStream) {
+                        currentStream = mediaStream;
+                        video = document.createElement('video'); // Define video globally
+                        video.srcObject = mediaStream;
+                        video.play();
+                        cameraInfo.textContent = `Recording for class "${className}"`; // Update camera info
+                        cameraContainer.innerHTML = ''; // Clear existing content
+                        cameraContainer.appendChild(video);
+
+                        // Add camera icon button below the camera
+                        var cameraIconBtn = document.createElement("button");
+                        cameraIconBtn.className = "camera-icon-btn";
+                        cameraIconBtn.textContent = "Take Screenshot";
+                        cameraIconBtn.onclick = function() {
+                            takeScreenshot(className);
+                        };
+                        cameraContainer.appendChild(cameraIconBtn);
+                    })
+                    .catch(function(error) {
+                        console.error('Error accessing the camera: ', error);
+                    });
+            } else {
+                console.error('getUserMedia is not supported');
+            }
+        }
+
+        // Function to take and save a screenshot
+        function takeScreenshot(className) {
+            if (!video) return; // Check if video is defined
+            var canvas = document.createElement('canvas');
+            var scaleFactor = 0.1; // Adjust the scale factor as needed
+            canvas.width = video.videoWidth * scaleFactor;
+            canvas.height = video.videoHeight * scaleFactor;
+            var context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            var imgDataUrl = canvas.toDataURL('image/jpeg');
+
+            // Get the current active class container based on the class name
+            var activeContainer = document.querySelector(`#${className}`);
+            if (!activeContainer) return; // No active container found
+
+            // Append the screenshot to the active class container's preview section
+            var img = document.createElement('img');
+            img.src = imgDataUrl;
+            img.classList.add('thumbnail');
+            activeContainer.querySelector('.preview').appendChild(img);
+        }
+    </script>
+</body>
+</html>

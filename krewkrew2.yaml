@@ -1,0 +1,20 @@
+names:
+  0: QC 2
+  1: QC 3
+  2: QC 15
+  3: QC 15 BLUE
+  4: QC 25 BLACK
+  5: QC 25 TRIPLE BLACK
+  6: QC 25 WHITE
+  7: QC 35 I SILVER
+  8: QC 35 II BLACK
+  9: QC 35 II M, BLUE
+  10: QC 35 II ROSE GOLD
+  11: QC 35 II SILVER
+  12: SL AE II BLACK
+  13: SL AE II WHITE
+  14: Testing ABC
+  15: dfgfdgdgfdgdg
+  16: waawawa
+train: dataset/images/train/
+val: dataset/images/train/

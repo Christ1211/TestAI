@@ -1,0 +1,3 @@
+train: C:\Users\daboy\Desktop\AI Project\yolov5\dataset\images\train
+val: C:\Users\daboy\Desktop\AI Project\yolov5\dataset\val\images
+names: ['Edifier headphoneds']

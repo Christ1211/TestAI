@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Train YOLOv5 Model</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+    <style>
+        /* Add progress bar CSS */
+        #progress-bar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black overlay */
+            z-index: 9999; /* Ensure it's on top of everything */
+        }
+        #progress-bar {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50%;
+            max-width: 400px;
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        #progress {
+            height: 5px;
+            width: 0;
+            background-color: #4caf50;
+            transition: width 0.3s ease-in-out;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f4;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        form {
+            background: #fff;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        select,
+        input[type="number"],
+        input[type="file"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        input[type="submit"],
+        button[type="button"] {
+            background-color: #5cb85c;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        input[type="submit"]:hover,
+        button[type="button"]:hover {
+            background-color: #4cae4c;
+        }
+        #video {
+            display: block;
+            margin: 20px auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            position: relative;
+        }
+        #capture {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        #preview {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .thumbnail {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    {% include 'Trainedmodels.html' %}
+    <!-- Overlay for progress bar -->
+    <div id="progress-bar-overlay">
+        <div id="progress-bar">
+            <div id="progress"></div>
+        </div>
+    </div>
+
+    <h1>SHEEEEESH Model</h1>
+
+    <form id="add-class-form" method="POST" action="/add_class">
+        <label for="new_class_name">New Class Name:</label>
+        <input type="text" id="new_class_name" name="new_class_name" required>
+        <button type="submit">Add Class</button>
+    </form>
+    <script>
+        
+    </script>
+
+    
+<form id="upload-form" method="POST" action="/upload_training_data" enctype="multipart/form-data">
+    <label for="class_name">Class Name:</label>
+    <select name="class_name" id="class_name" required onchange="updateClassLine()">
+        {% for class_name in class_names %}
+        <option value="{{ class_name }}">{{ class_name }}</option>
+        {% endfor %}
+    </select>
+    
+    <label style="display: none;" for="classline">Class Line:</label>
+    <select style="display: none;" name="classline" id="classline" required>
+        {% for class_name in class_names %}
+        <option value="{{ loop.index0 }}">{{ class_name }}</option>
+        {% endfor %}
+    </select>
+        
+        
+        <label for="images">Upload Images:</label>
+        <input type="file" name="images" id="images" accept="image/*" multiple required>
+
+        <div style="position: relative;">
+            <video id="video" width="320" height="240" autoplay></video>
+            <button type="button" id="capture">Capture Image</button>
+        </div>
+        <canvas id="canvas" style="display: none;"></canvas>
+
+        <div id="preview"></div>
+        
+        <input type="submit" value="Upload">
+    </form>
+
+    
+<script>
+    function updateClassLine() {
+        var class_name = document.getElementById("class_name").value;
+        var classlineDropdown = document.getElementById("classline");
+
+        // Find the option with matching text and select it
+        for (var i = 0; i < classlineDropdown.options.length; i++) {
+            if (classlineDropdown.options[i].text === class_name) {
+                classlineDropdown.selectedIndex = i;
+                break;
+            }
+        }
+    }
+</script>
+    
+    
+    <h2>Start Training</h2>
+    <form id="train-form" method="POST" action="/start_training" enctype="multipart/form-data">
+        <label for="epochs">Number of Epochs:</label>
+        <input type="number" name="epochs" id="epochs" value="10" min="1" required>
+        
+        <label for="class_name">Select Class:</label>
+        <select name="class_name" id="class_name" required>
+            {% for class_name in class_names %}
+                <option value="{{ class_name }}">{{ class_name }}</option>
+            {% endfor %}
+        </select>
+        
+        <input type="submit" value="Start Training">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+
+
+    <script>
+        $(document).ready(function() {
+            $('#class_name').select2();
+
+            const uploadForm = document.getElementById('upload-form');
+            const progressBarOverlay = document.getElementById('progress-bar-overlay');
+            const progressBar = document.getElementById('progress');
+
+            uploadForm.addEventListener('submit', function() {
+                progressBarOverlay.style.display = 'block';
+                const interval = setInterval(function() {
+                    progress.style.width = Math.min(progress.offsetWidth + 10, progressBar.offsetWidth) + 'px';
+                    if (progress.offsetWidth >= progressBar.offsetWidth) {
+                        clearInterval(interval);
+                    }
+                }, 200);
+            });
+        });
+
+        $(document).ready(function() {
+            $('#class_name').select2();
+
+            const captureButton = document.getElementById('capture');
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const preview = document.getElementById('preview');
+            const imagesInput = document.getElementById('images');
+
+            let captureInterval;
+
+            captureButton.addEventListener('mousedown', () => {
+                captureInterval = setInterval(() => {
+                    captureImage();
+                }, 200); // Capture image every 200 milliseconds
+            });
+
+            captureButton.addEventListener('mouseup', () => {
+                clearInterval(captureInterval);
+            });
+
+            captureButton.addEventListener('mouseleave', () => {
+                clearInterval(captureInterval);
+            });
+
+            const captureImage = () => {
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob((blob) => {
+                    const file = new File([blob], `capture_${Date.now()}.png`, { type: 'image/png' });
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    for (const file of imagesInput.files) {
+                        dataTransfer.items.add(file);
+                    }
+                    imagesInput.files = dataTransfer.files;
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.classList.add('thumbnail');
+                    preview.appendChild(img);
+                });
+            };
+
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    video.srcObject = stream;
+                })
+                .catch((err) => {
+                    console.error("Error accessing the camera: " + err);
+                });
+
+            document.getElementById('images').addEventListener('change', function(event) {
+                preview.innerHTML = '';
+                const files = event.target.files;
+                for (const file of files) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.classList.add('thumbnail');
+                        preview.appendChild(img);
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    video.srcObject = stream;
+                })
+                .catch((err) => {
+                    console.error("Error accessing the camera: " + err);
+                });
+
+            document.getElementById('images').addEventListener('change', function(event) {
+                preview.innerHTML = '';
+                const files = event.target.files;
+                for (const file of files) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.classList.add('thumbnail');
+                        preview.appendChild(img);
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        
+        $(document).ready(function() {
+        $('#class_name').select2();
+        $('#class_name_train').select2();
+
+        const uploadForm = document.getElementById('upload-form');
+        const progressBarOverlay = document.getElementById('progress-bar-overlay');
+        const progressBar = document.getElementById('progress');
+
+        uploadForm.addEventListener('submit', function() {
+            progressBarOverlay.style.display = 'block';
+            const interval = setInterval(function() {
+                progress.style.width = Math.min(progress.offsetWidth + 10, progressBar.offsetWidth) + 'px';
+                if (progress.offsetWidth >= progressBar.offsetWidth) {
+                    clearInterval(interval);
+                }
+            }, 200);
+        });
+
+        const trainForm = document.getElementById('train-form');
+        const progressBarTrain = document.getElementById('progress-bar-overlay-train');
+        const progressTrain = document.getElementById('progress-train');
+
+        trainForm.addEventListener('submit', function() {
+            progressBarTrain.style.display = 'block';
+            const interval = setInterval(function() {
+                progressTrain.style.width = Math.min(progressTrain.offsetWidth + 10, progressBarTrain.offsetWidth) + 'px';
+                if (progressTrain.offsetWidth >= progressBarTrain.offsetWidth) {
+                    clearInterval(interval);
+                }
+            }, 200);
+        });
+    });
+    </script>
+</body>
+</html>

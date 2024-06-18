@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Train YOLOv5 Model</title>
+    <style>
+        .thumbnail {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Train YOLOv5 Model</h1>
+    <form method="POST" action="/upload_training_data" enctype="multipart/form-data">
+        <label for="class_name">Class Name:</label>
+        <input type="text" name="class_name" id="class_name" required><br>
+        
+        <label for="images">Upload Images:</label>
+        <input type="file" name="images" id="images" accept="image/*" multiple required><br>
+        
+        <div id="preview"></div>
+        
+        <input type="submit" value="Upload">
+    </form>
+    
+    <h2>Start Training</h2>
+    <form method="POST" action="/start_training">
+        <label for="epochs">Number of Epochs:</label>
+        <input type="number" name="epochs" id="epochs" value="10" min="1" required><br>
+        <input type="submit" value="Start Training">
+    </form>
+    
+    <script>
+        document.getElementById('images').addEventListener('change', function(event) {
+            const preview = document.getElementById('preview');
+            preview.innerHTML = '';
+            const files = event.target.files;
+            for (const file of files) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.classList.add('thumbnail');
+                    preview.appendChild(img);
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+</body>
+</html>

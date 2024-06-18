@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR and Barcode Scanner</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            function updateDetectedData() {
+                $.getJSON("/detected_data", function(data) {
+                    // Clear previous detected data
+                    $("#detected_codes").empty();
+                    
+                    // Append new detected data
+                    data.forEach(function(code) {
+                        $("#detected_codes").append("<li>" + code + "</li>");
+                    });
+                });
+            }
+
+            // Call updateDetectedData every second
+            setInterval(updateDetectedData, 1000);
+
+            // Event listener for clear button
+            $("#clear_button").click(function() {
+                $.get("/clear_data");
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>QR and Barcode Scanner</h1>
+    <img id="video_feed" src="{{ url_for('video_feed') }}" width="640" height="480" />
+    <h2>Detected Codes:</h2>
+    <ul id="detected_codes"></ul>
+    <button id="clear_button">Clear List</button>
+</body>
+</html>

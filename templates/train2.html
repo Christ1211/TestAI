@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR and Barcode Scanner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/2.0.0/jsQR.js"></script> <!-- Include jsQR library for QR code decoding -->
+    <script>
+        // Function to update the detected code
+        function updateCode(code) {
+            document.getElementById('detected_code').innerText = code;
+            // Save the detected code (you can customize this part)
+            saveCode(code);
+        }
+
+        // Function to add code to the list
+        function addCodeToList(code) {
+            var list = document.getElementById('code_list');
+            var listItem = document.createElement('li');
+            listItem.textContent = code;
+            list.appendChild(listItem);
+        }
+
+        // Function to save the code (customize this according to your needs)
+        function saveCode(code) {
+            // Check if the detected code is a URL (you might need to refine this check)
+            if (isURL(code)) {
+                // Save the URL or perform further processing
+                console.log("Detected URL:", code);
+                // Example: You can redirect to the detected URL
+                window.location.href = code;
+            } else {
+                // Save the serial or perform further processing
+                console.log("Detected Serial:", code);
+                // Example: You can send the serial to a server for processing
+                // Here, we'll just add it to the list
+                addCodeToList(code);
+            }
+        }
+
+        // Function to check if a string is a URL
+        function isURL(str) {
+            // Very basic URL detection for demonstration purposes
+            return str.startsWith('http://') || str.startsWith('https://');
+        }
+
+        // Function to handle the scanning process
+        function scanCode() {
+            var video = document.getElementById('video_feed');
+            var canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            var context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            var code = jsQR(imageData.data, imageData.width, imageData.height);
+            if (code) {
+                console.log("Barcode Detected:", code); // Add debug information
+                updateCode(code.data);
+            }
+            requestAnimationFrame(scanCode);
+        }
+
+        // Start scanning when the page loads
+        window.onload = function() {
+            scanCode();
+        };
+    </script>
+    <style>
+        /* Additional styling for the video feed */
+        #video_feed {
+            display: none; /* Hide the video feed */
+        }
+    </style>
+</head>
+<body>
+    <h1>QR and Barcode Scanner</h1>
+    <video id="video_feed" width="640" height="480" autoplay></video> <!-- Use video element for camera feed -->
+    <p>Detected Code: <span id="detected_code"></span></p>
+    <ul id="code_list"></ul>
+</body>
+</html>
