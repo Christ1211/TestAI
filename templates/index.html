@@ -85,9 +85,61 @@
 			<!-- AI code-->
 				 
 				   <form class="form-signin col-lg-3" method=post enctype=multipart/form-data name="form1">
-       
-            <img src="{{ url_for('video_feed') }}" alt="Video Feed" id="video_feed">
-	
+            
+            <style>
+              img {
+                  width: 640px;
+                  height: 480px;
+              }
+          </style>
+ 
+          <h1>Live Object Detection</h1>
+          <img id="processed_feed" src="">
+      
+          <script>
+              async function startVideo() {
+                  try {
+                      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                      const videoElement = document.createElement('video');
+                      videoElement.srcObject = stream;
+                      videoElement.play();
+      
+                      const canvas = document.createElement('canvas');
+                      const context = canvas.getContext('2d');
+      
+                      videoElement.addEventListener('play', () => {
+                          const sendFrame = async () => {
+                              if (videoElement.paused || videoElement.ended) {
+                                  return;
+                              }
+      
+                              canvas.width = videoElement.videoWidth;
+                              canvas.height = videoElement.videoHeight;
+                              context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                              const frame = canvas.toDataURL('image/jpeg').split(',')[1];
+      
+                              const response = await fetch('/video_feed', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ frame: frame })
+                              });
+      
+                              const blob = await response.blob();
+                              const processedFeed = document.getElementById('processed_feed');
+                              processedFeed.src = URL.createObjectURL(blob);
+      
+                              requestAnimationFrame(sendFrame);
+                          };
+      
+                          sendFrame();
+                      });
+                  } catch (err) {
+                      console.error("Error accessing camera: ", err);
+                  }
+              }
+      
+              window.addEventListener('load', startVideo);
+          </script>
 
                  
                 </div>
@@ -114,6 +166,72 @@
               <div class="card-body">
                 <div class="tab-content p-0">
                   <!-- Morris chart - Sales -->
+                  <style>
+                    .image-container {
+                        max-width: 800px; /* Adjust the max-width as needed */
+                        margin: 0 auto; /* Center align the container */
+                        border: 1px solid #ccc;
+                        padding: 10px;
+                    }
+                    .popup {
+                        display: none;
+                        position: fixed;
+                        left: 50%;
+                        top: 50%;
+                        transform: translate(-50%, -50%);
+                        background-color: white;
+                        padding: 20px;
+                        border: 1px solid #ccc;
+                        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                        z-index: 9999;
+                    }
+                </style>
+           
+                <h2>Upload an Image</h2>
+                <form method="POST" enctype="multipart/form-data" action="/" id="upload-form">
+                    <input type="file" name="file" accept=".jpg, .jpeg, .png">
+                    <br><br>
+                    <input type="submit" value="Upload">
+                </form>
+            
+                <!-- Container for displaying uploaded image -->
+                <div class="image-container">
+                    {% if image_data %}
+                        <img src="data:image/jpeg;base64,{{ image_data }}" alt="Uploaded Image" style="max-width: 100%;">
+                        <br><br>
+                        <form method="POST" action="/mark_image" id="mark-form">
+                            <input type="hidden" name="image_data" value="{{ image_data }}">
+                            <input type="hidden" name="mark" value="correct">
+                            <input type="submit" value="Correct">
+                            <input type="button" value="Wrong" onclick="showPopup()">
+                        </form>
+                    {% endif %}
+                </div>
+            
+                <!-- Popup for entering class name -->
+                <div class="popup" id="popup">
+                    <h3>Enter Class Name</h3>
+                    <form method="POST" action="/mark_image" id="class-form">
+                        <input type="hidden" name="image_data" value="{{ image_data }}">
+                        <input type="hidden" name="mark" value="wrong">
+                        <input type="text" name="class_name" required>
+                        <br><br>
+                        <input type="submit" value="Save">
+                        <input type="button" value="Cancel" onclick="hidePopup()">
+                    </form>
+                </div>
+            
+                <!-- JavaScript to show/hide popup -->
+                <script>
+                    function showPopup() {
+                        document.getElementById('popup').style.display = 'block';
+                    }
+            
+                    function hidePopup() {
+                        document.getElementById('popup').style.display = 'none';
+                    }
+                </script>
+
                   <div class="chart tab-pane active" id="revenue-chart"
                         style="position: relative; height: 700px;">
             

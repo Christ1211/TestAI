@@ -13,8 +13,7 @@ names:
   11: QC 35 II SILVER
   12: SL AE II BLACK
   13: SL AE II WHITE
-  14: Testing ABC
-  15: dfgfdgdgfdgdg
-  16: waawawa
+  14: 700 SOAPSTONE
+  15: 700 BLACK
 train: dataset/images/train/
-val: dataset/images/train/
+val: dataset/images/val/

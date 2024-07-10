@@ -10,16 +10,27 @@ import base64
 import json
 import time
 import numpy as np
+import random
+import ssl
+from flask_cors import CORS
+from PIL import Image
+import io
+import torchvision.transforms as transforms  # Correct import
 
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+CORS(app)
 
 # Define paths for uploads and dataset
 UPLOAD_FOLDER_IMAGES = 'dataset/val/images'
 UPLOAD_FOLDER_LABELS = 'dataset/val/labels'
 DATASET_FOLDER_IMAGES_TRAIN = 'dataset/images/train'
+DATASET_FOLDER_IMAGES_VAL = 'dataset/images/val'
 DATASET_FOLDER_LABELS_TRAIN = 'dataset/labels/train'
+DATASET_FOLDER_LABELS_VAL = 'dataset/labels/val'
+
+
 os.makedirs(UPLOAD_FOLDER_IMAGES, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER_LABELS, exist_ok=True)
 os.makedirs(DATASET_FOLDER_IMAGES_TRAIN, exist_ok=True)
@@ -31,51 +42,6 @@ os.makedirs(DATASET_FOLDER_LABELS_TRAIN, exist_ok=True)
 file_path = 'class_names.txt'
 
 # Initialize an empty list to store class names
-class_names = []
-
-# Read class names from the text file
-with open(file_path, 'r') as file:
-    for line in file:
-        # Remove any extra whitespace, like newline characters
-        class_names.append(line.strip())
-
-# Now class_names list contains your class names
-
-# Create a dictionary to map indices to class names
-names_dict = {i: class_names[i] for i in range(len(class_names))}
-
-# Print the dictionary for verification
-print("Names dictionary:")
-print(names_dict)
-
-# Example yaml structure
-yaml_data = {
-    'train': "dataset/images/train/",  # Path to training images with class names
-    'val': "dataset/images/train/",    # Path to validation images with class names
-    'names': names_dict,
-    # Add other YOLOv5 parameters here as needed
-}
-
-# Example usage: You might write this yaml_data to a yaml file for YOLOv5 training
-# Here's how you might write it using PyYAML
-import yaml
-
-yaml_file_path = 'krewkrew2.yaml'
-with open(yaml_file_path, 'w') as yamlfile:
-    yaml.safe_dump(yaml_data, yamlfile, default_flow_style=False)
-
-
-  # For uploading
-def load_model2(model_path='runs/train/exp7/weights/last.pt'):
-    # Load the YOLOv5 model
-   model2 = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path)
-   return model2
-
-
-def load_model(model_path):
-    model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path)
-    return model
-
 # Load all models at the start
 class_names_path = 'class_names.txt'
 with open(class_names_path, 'r') as f:
@@ -88,54 +54,55 @@ base_path = 'runs/train/'
 # Loop through the class names and construct the model paths
 for class_name in class_names:
     directory = f"{base_path}{class_name}"
+    model_path = f"{directory}/weights/best.pt"
     if os.path.exists(directory):
-        model_paths[class_name] = f"{directory}/weights/Best.pt"
+        if os.path.exists(model_path):
+            model_paths[class_name] = model_path
+        else:
+            print(f"File not found: {model_path}, deleting directory...")
+            shutil.rmtree(directory)
     else:
         print(f"Directory not found: {directory}, skipping...")
 
 # Print the modified model_paths
 print(model_paths)
 
+def load_model(path):
+    return torch.hub.load('ultralytics/yolov5', 'custom', path=path)
+
 models = {key: load_model(path) for key, path in model_paths.items()}
 
-# Function to generate frames using all models
-def gen_frames(models):
-    camera = cv2.VideoCapture(0)  # Use 0 for webcam
-    while True:
-        success, frame = camera.read()
-        if not success:
-            break
-        else:
-            # Convert frame to RGB as model expects RGB input
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+def process_frame(frame, models):
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    for key, model in models.items():
+        results = model(frame_rgb)
+        for result in results.xyxy[0]:
+            x1, y1, x2, y2, conf, cls = result
+            if conf > 0.8:
+                label = f"{model.names[int(cls)]} {conf:.2f}"
+                cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+                cv2.putText(frame, label, (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+    return frame
 
-            for key, model in models.items():
-                # Perform object detection using the loaded model
-                results = model(frame_rgb)
-                # Draw bounding boxes
-                for result in results.xyxy[0]:
-                    x1, y1, x2, y2, conf, cls = result
-                    if conf > 0.8:  # Check confidence threshold
-                        label = f"{model.names[int(cls)]} {conf:.2f}"
-                        cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)  # Red bounding box
-                        cv2.putText(frame, label, (int(x1), int(y1) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-            
-            # Encode the frame in JPEG format
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame = buffer.tobytes()
-            
-            # Yield the frame in byte format
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+@app.route('/video_feed', methods=['POST'])
+def video_feed():
+    data = request.json['frame']
+    img_data = base64.b64decode(data)
+    np_img = np.frombuffer(img_data, dtype=np.uint8)
+    frame = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
 
+    processed_frame = process_frame(frame, models)
+
+    ret, buffer = cv2.imencode('.jpg', processed_frame)
+    frame = buffer.tobytes()
+    
+    return Response(frame, mimetype='image/jpeg')
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/video_feed')
-def video_feed():
-    return Response(gen_frames(models), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 # Function to read class names from the file
 def read_class_names():
@@ -182,6 +149,7 @@ import shutil
 from flask import request
 
 
+
 @app.route('/upload_training_data', methods=['POST'])
 def upload_training_data():
     if 'images' not in request.files or 'class_name' not in request.form:
@@ -193,6 +161,9 @@ def upload_training_data():
 
     if not images:
         return redirect(request.url)
+
+    temp_images = []
+    temp_labels = []
 
     for image in images:
         if image.filename == '':
@@ -224,13 +195,36 @@ def upload_training_data():
                 height = (xyxy[3].item() - xyxy[1].item()) / results.ims[0].shape[0]
                 label_file.write(f"{class_name2} {x_center} {y_center} {width} {height}\n")
 
-        # Copy the image and label file to the training dataset folder
-        class_folder_images = os.path.join(DATASET_FOLDER_IMAGES_TRAIN, class_name)
-        class_folder_labels = os.path.join(DATASET_FOLDER_LABELS_TRAIN, class_name)
-        os.makedirs(class_folder_images, exist_ok=True)
-        os.makedirs(class_folder_labels, exist_ok=True)
-        shutil.copy(image_path, class_folder_images)
-        shutil.copy(label_path, class_folder_labels)
+        temp_images.append(image_path)
+        temp_labels.append(label_path)
+
+    # Shuffle and split the data into training and validation sets
+    combined = list(zip(temp_images, temp_labels))
+    random.shuffle(combined)
+    temp_images[:], temp_labels[:] = zip(*combined)
+
+    split_idx = int(0.7 * len(temp_images))
+    train_images = temp_images[:split_idx]
+    val_images = temp_images[split_idx:]
+    train_labels = temp_labels[:split_idx]
+    val_labels = temp_labels[split_idx:]
+
+    # Move files to the appropriate directories
+    for img, lbl in zip(train_images, train_labels):
+        class_folder_images_train = os.path.join(DATASET_FOLDER_IMAGES_TRAIN, class_name)
+        class_folder_labels_train = os.path.join(DATASET_FOLDER_LABELS_TRAIN, class_name)
+        os.makedirs(class_folder_images_train, exist_ok=True)
+        os.makedirs(class_folder_labels_train, exist_ok=True)
+        shutil.move(img, class_folder_images_train)
+        shutil.move(lbl, class_folder_labels_train)
+
+    for img, lbl in zip(val_images, val_labels):
+        class_folder_images_val = os.path.join(DATASET_FOLDER_IMAGES_VAL, class_name)
+        class_folder_labels_val = os.path.join(DATASET_FOLDER_LABELS_VAL, class_name)
+        os.makedirs(class_folder_images_val, exist_ok=True)
+        os.makedirs(class_folder_labels_val, exist_ok=True)
+        shutil.move(img, class_folder_images_val)
+        shutil.move(lbl, class_folder_labels_val)
 
     return redirect(url_for('train_page'))
 
@@ -250,11 +244,11 @@ def start_training():
             device = torch.device("cpu")
 
         # Define the path to the YAML file for the selected class
-        yaml_file_path = os.path.join('krewkrew2.yaml')
+        yaml_file_path = 'krewkrew2.yaml'
 
         # Update the YAML file with new paths
         train_path = os.path.join('dataset/images/train', class_name)
-        val_path = os.path.join('dataset/images/train', class_name)
+        val_path = os.path.join('dataset/images/val', class_name)
         
         with open(yaml_file_path, 'r') as file:
             yaml_data = yaml.safe_load(file)
@@ -265,19 +259,37 @@ def start_training():
         with open(yaml_file_path, 'w') as file:
             yaml.safe_dump(yaml_data, file, default_flow_style=False)
 
+        # Define the path where the weights are expected to be stored
+        weights_dir = 'runs/train'  # This is the default directory where YOLOv5 stores trained weights
+        class_weights_dir = os.path.join(weights_dir, class_name)
+        weights_file = os.path.join(class_weights_dir, 'weights/best.pt')
+        
+        # Check if the weights file for the class exists
+        if os.path.isfile(weights_file):
+            weights_path = weights_file
+            print(f"Using existing weights: {weights_path}")
+        else:
+            weights_path = 'yolov5s.pt'  # Default YOLOv5 weights
+            print(f"No existing weights found. Using default weights: {weights_path}")
+
+        # Ensure the directory exists
+        if not os.path.exists(class_weights_dir):
+            os.makedirs(class_weights_dir)
+
         # Load model
-        model_path = 'yolov5s.pt'  # Adjust this path as per your model location
-        model = load_model(model_path).to(device)
+        model = load_model(weights_path).to(device)
 
         # Use subprocess to call the training script
         command = [
             'python', 'train.py',
             '--img', '640',
-            '--batch', '16',
+            '--batch', '20',
             '--epochs', str(epochs),
             '--data', yaml_file_path,  # Use updated YAML file
-            '--weights', 'yolov5s.pt',
-            '--name', class_name
+            '--weights', weights_path,
+            '--name', class_name,
+            '--project', weights_dir,  # Ensure training outputs are in the correct directory
+            '--exist-ok'  # Allow existing directory to be used
         ]
 
         # Capture the stdout and stderr of the subprocess
@@ -289,20 +301,90 @@ def start_training():
             logging.error(f"Training script failed with error: {result.stderr}")
             return "Training Failed"
 
-        return "TRAINING FINISHED!"
+        # Convert the trained model to TensorFlow.js format
+        tfjs_output_dir = os.path.join(class_weights_dir, 'tfjs_model')
+        if not os.path.exists(tfjs_output_dir):
+            os.makedirs(tfjs_output_dir)
+        
+        # Assuming you have the model conversion script `pt_to_tfjs.py`
+        conversion_command = [
+            'python', 'pt_to_tfjs.py',
+            '--model', weights_file,
+            '--output', tfjs_output_dir
+        ]
+        
+        conversion_result = subprocess.run(conversion_command, capture_output=True, text=True)
+        logging.info(conversion_result.stdout)
+        if conversion_result.returncode != 0:
+            logging.error(f"Model conversion failed with error: {conversion_result.stderr}")
+            return "Model Conversion Failed"
+
+        return "TRAINING AND CONVERSION FINISHED!"
     
     except Exception as e:
         logging.error(f"An error occurred: {str(e)}")
         return f"Error occurred: {str(e)}"
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
-@app.route('/dataset/val/images/<filename>')
-def serve_image(filename):
-    return send_from_directory(UPLOAD_FOLDER_IMAGES, filename)
+#levie code
+
+@app.route('/upload_image', methods=['POST'])
+def upload_image():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+
+    try:
+        image = Image.open(file).convert('RGB')
+        transform = transforms.Compose([
+            transforms.Resize((640, 640)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+        input_tensor = transform(image).unsqueeze(0)
+
+        highest_confidence = 0.0
+        best_model = None
+        results_dict = []
+
+        for key, model in models.items():
+            output = model(input_tensor)
+            conf = output[0][:, 4].max().item() if len(output[0]) > 0 else 0.0
+            if conf > highest_confidence:
+                highest_confidence = conf
+                best_model = model
+
+        if best_model:
+            output = best_model(input_tensor)
+            predictions = output[0]
+            boxes = predictions[:, :4].cpu().numpy()
+            scores = predictions[:, 4].cpu().numpy()
+            labels = predictions[:, 5].cpu().numpy()
+
+            for i in range(len(boxes)):
+                if scores[i] > 0.2:
+                    label = f"{best_model.names[int(labels[i])]} {scores[i]:.2f}"
+                    results_dict.append({
+                        "label": label,
+                        "confidence": float(scores[i]),
+                        "coordinates": boxes[i].tolist()
+                    })
+
+        return jsonify({'predictions': results_dict})
+    except Exception as e:
+        print(f'Error: {e}')
+        return jsonify({'error': str(e)}), 500
 
 
+
+
+context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+context.load_cert_chain('certificate.pem', 'key.pem')
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=1501, debug=True, ssl_context=context)
+
 

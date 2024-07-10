@@ -153,19 +153,20 @@
     </select>
         
         
-        <label for="images">Upload Images:</label>
-        <input type="file" name="images" id="images" accept="image/*" multiple required>
+    <label for="images">Upload Images:</label>
+    <input type="file" name="images" id="images" accept="image/*" multiple required>
 
-        <div style="position: relative;">
-            <video id="video" width="320" height="240" autoplay></video>
-            <button type="button" id="capture">Capture Image</button>
-        </div>
-        <canvas id="canvas" style="display: none;"></canvas>
+    <div style="position: relative;">
+        <video id="video" width="320" height="240" autoplay></video>
+        <button type="button" id="capture">Capture Image</button>
+    </div>
+    <canvas id="canvas" style="display: none;"></canvas>
 
-        <div id="preview"></div>
-        
-        <input type="submit" value="Upload">
-    </form>
+    <div id="preview"></div>
+    <button type="button" id="see-more-button" style="display: none;" onclick="showMoreImages()">See More</button>
+    
+    <input type="submit" value="Upload">
+</form>
 
     
 <script>
@@ -203,6 +204,25 @@
 
 
     <script>
+
+        $(document).ready(function() {
+            $('#class_name2').select2();
+
+            const uploadForm = document.getElementById('train-form');
+            const progressBarOverlay = document.getElementById('progress-bar-overlay');
+            const progressBar = document.getElementById('progress');
+
+            uploadForm.addEventListener('submit', function() {
+                progressBarOverlay.style.display = 'block';
+                const interval = setInterval(function() {
+                    progress.style.width = Math.min(progress.offsetWidth + 10, progressBar.offsetWidth) + 'px';
+                    if (progress.offsetWidth >= progressBar.offsetWidth) {
+                        clearInterval(interval);
+                    }
+                }, 200);
+            });
+        });
+
         $(document).ready(function() {
             $('#class_name').select2();
 
@@ -276,8 +296,8 @@
 
             document.getElementById('images').addEventListener('change', function(event) {
                 preview.innerHTML = '';
-                const files = event.target.files;
-                for (const file of files) {
+                const files = Array.from(event.target.files);
+                files.slice(0, 20).forEach(file => {
                     const reader = new FileReader();
                     reader.onload = function(e) {
                         const img = document.createElement('img');
@@ -286,65 +306,67 @@
                         preview.appendChild(img);
                     }
                     reader.readAsDataURL(file);
-                }
-            });
-        });
-
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then((stream) => {
-                    video.srcObject = stream;
-                })
-                .catch((err) => {
-                    console.error("Error accessing the camera: " + err);
                 });
 
-            document.getElementById('images').addEventListener('change', function(event) {
-                preview.innerHTML = '';
-                const files = event.target.files;
-                for (const file of files) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const img = document.createElement('img');
-                        img.src = e.target.result;
-                        img.classList.add('thumbnail');
-                        preview.appendChild(img);
-                    }
-                    reader.readAsDataURL(file);
+                if (files.length > 20) {
+                    document.getElementById('see-more-button').style.display = 'block';
+                } else {
+                    document.getElementById('see-more-button').style.display = 'none';
                 }
             });
-        
+        });
+
+        function showMoreImages() {
+            const files = document.getElementById('images').files;
+            const preview = document.getElementById('preview');
+            const currentImageCount = preview.children.length;
+
+            for (let i = currentImageCount; i < files.length; i++) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.classList.add('thumbnail');
+                    preview.appendChild(img);
+                }
+                reader.readAsDataURL(files[i]);
+            }
+
+            document.getElementById('see-more-button').style.display = 'none';
+        }
+
         $(document).ready(function() {
-        $('#class_name').select2();
-        $('#class_name_train').select2();
+            $('#class_name').select2();
+            $('#class_name_train').select2();
 
-        const uploadForm = document.getElementById('upload-form');
-        const progressBarOverlay = document.getElementById('progress-bar-overlay');
-        const progressBar = document.getElementById('progress');
+            const uploadForm = document.getElementById('upload-form');
+            const progressBarOverlay = document.getElementById('progress-bar-overlay');
+            const progressBar = document.getElementById('progress');
 
-        uploadForm.addEventListener('submit', function() {
-            progressBarOverlay.style.display = 'block';
-            const interval = setInterval(function() {
-                progress.style.width = Math.min(progress.offsetWidth + 10, progressBar.offsetWidth) + 'px';
-                if (progress.offsetWidth >= progressBar.offsetWidth) {
-                    clearInterval(interval);
-                }
-            }, 200);
+            uploadForm.addEventListener('submit', function() {
+                progressBarOverlay.style.display = 'block';
+                const interval = setInterval(function() {
+                    progress.style.width = Math.min(progress.offsetWidth + 10, progressBar.offsetWidth) + 'px';
+                    if (progress.offsetWidth >= progressBar.offsetWidth) {
+                        clearInterval(interval);
+                    }
+                }, 200);
+            });
+
+            const trainForm = document.getElementById('train-form');
+            const progressBarTrain = document.getElementById('progress-bar-overlay-train');
+            const progressTrain = document.getElementById('progress-train');
+
+            trainForm.addEventListener('submit', function() {
+                progressBarTrain.style.display = 'block';
+                const interval = setInterval(function() {
+                    progressTrain.style.width = Math.min(progressTrain.offsetWidth + 10, progressBarTrain.offsetWidth) + 'px';
+                    if (progressTrain.offsetWidth >= progressBarTrain.offsetWidth) {
+                        clearInterval(interval);
+                    }
+                }, 200);
+            });
         });
-
-        const trainForm = document.getElementById('train-form');
-        const progressBarTrain = document.getElementById('progress-bar-overlay-train');
-        const progressTrain = document.getElementById('progress-train');
-
-        trainForm.addEventListener('submit', function() {
-            progressBarTrain.style.display = 'block';
-            const interval = setInterval(function() {
-                progressTrain.style.width = Math.min(progressTrain.offsetWidth + 10, progressBarTrain.offsetWidth) + 'px';
-                if (progressTrain.offsetWidth >= progressBarTrain.offsetWidth) {
-                    clearInterval(interval);
-                }
-            }, 200);
-        });
-    });
     </script>
 </body>
 </html>
